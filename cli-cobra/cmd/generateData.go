@@ -20,7 +20,11 @@ func init() {
 }
 
 func loadGames(cmd *cobra.Command, args []string) {
-	MatchData := util.Scraper()
+	MatchData := util.Scraper("America/Chicago")
 
-	fmt.Println(MatchData)
+	for _, match := range MatchData {
+		fmt.Println(match.Time, match.Team2)
+	}
+
+	//fmt.Println(MatchData)
 }

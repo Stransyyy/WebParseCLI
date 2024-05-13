@@ -8,6 +8,11 @@ import (
 	"github.com/gocolly/colly"
 )
 
+var (
+	layout = "3:04 PM"
+)
+
+// MatchDetails holds the details of a match
 type MatchDetails struct {
 	Team1      string
 	Team2      string
@@ -16,7 +21,41 @@ type MatchDetails struct {
 	Time       string
 }
 
-func Scraper() []MatchDetails {
+// TimeResult holds the parsed time and any error message
+type TimeResult struct {
+	ParsedTime string
+	ErrorMsg   string
+}
+
+// ParseAndValidateTime parses and validates the given time string and adjusts it to the specified time zone
+func ParseAndValidateTime(value string, timeZone string) TimeResult {
+	value = strings.TrimSpace(value)
+
+	t, err := time.Parse(layout, value)
+	if err != nil {
+		return TimeResult{
+			ParsedTime: "",
+			ErrorMsg:   "Time cannot be parsed",
+		}
+	}
+
+	loc, err := time.LoadLocation(timeZone)
+	if err != nil {
+		return TimeResult{
+			ParsedTime: "",
+			ErrorMsg:   err.Error(),
+		}
+	}
+
+	t = t.In(loc)
+	return TimeResult{
+		ParsedTime: t.Format(layout),
+		ErrorMsg:   "",
+	}
+}
+
+// Scraper scrapes match details from the specified website
+func Scraper(timeZone string) []MatchDetails {
 	c := colly.NewCollector(
 		colly.AllowedDomains("espn.com", "www.espn.com"), // Assuming ESPN domain, adjust as necessary
 		colly.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"),
@@ -45,15 +84,20 @@ func Scraper() []MatchDetails {
 				gameStatus = "Full Time"
 			}
 
-			//We parse the time
-			s := time.Time{}.Format(timeStart)
+			// We need to convert the time to a more readable format
+			timeResult := ParseAndValidateTime(timeStart, timeZone)
+			if timeResult.ErrorMsg != "" {
+				log.Println("Error parsing time:", timeResult.ErrorMsg)
+				timeResult.ParsedTime = "FT"
+			}
 
+			// Append the data to the slice
 			details = append(details, MatchDetails{
 				Team1:      team1,
 				Team2:      team2,
 				GameStatus: gameStatus,
 				Venue:      venue,
-				Time:       s,
+				Time:       timeResult.ParsedTime,
 			})
 		})
 	})
@@ -65,5 +109,4 @@ func Scraper() []MatchDetails {
 	c.Visit("https://www.espn.com/soccer/schedule") // Modify to the actual URL you are targeting
 
 	return details
-
 }
