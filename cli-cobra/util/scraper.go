@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -9,7 +10,7 @@ import (
 )
 
 var (
-	layout = "3:04 PM"
+	layout = "3:04 PM" // The Go time layout for parsing 12-hour clock format with AM/PM
 )
 
 // MatchDetails holds the details of a match
@@ -29,16 +30,23 @@ type TimeResult struct {
 
 // ParseAndValidateTime parses and validates the given time string and adjusts it to the specified time zone
 func ParseAndValidateTime(value string, timeZone string) TimeResult {
+	// Clean the input time string
 	value = strings.TrimSpace(value)
 
+	// Debug print the raw time string
+	fmt.Println("Raw time string:", value)
+
+	// Parse the time string according to the layout
 	t, err := time.Parse(layout, value)
 	if err != nil {
+		fmt.Println("Parsing error:", err)
 		return TimeResult{
 			ParsedTime: "",
 			ErrorMsg:   "Time cannot be parsed",
 		}
 	}
 
+	// Load the specified time zone
 	loc, err := time.LoadLocation(timeZone)
 	if err != nil {
 		return TimeResult{
@@ -47,6 +55,7 @@ func ParseAndValidateTime(value string, timeZone string) TimeResult {
 		}
 	}
 
+	// Adjust the parsed time to the specified time zone
 	t = t.In(loc)
 	return TimeResult{
 		ParsedTime: t.Format(layout),
@@ -84,11 +93,14 @@ func Scraper(timeZone string) []MatchDetails {
 				gameStatus = "Full Time"
 			}
 
+			// Debug print the raw time string
+			fmt.Println("Raw extracted time string:", timeStart)
+
 			// We need to convert the time to a more readable format
 			timeResult := ParseAndValidateTime(timeStart, timeZone)
 			if timeResult.ErrorMsg != "" {
 				log.Println("Error parsing time:", timeResult.ErrorMsg)
-				timeResult.ParsedTime = "FT"
+				timeResult.ParsedTime = "Time cannot be parsed"
 			}
 
 			// Append the data to the slice
@@ -109,4 +121,13 @@ func Scraper(timeZone string) []MatchDetails {
 	c.Visit("https://www.espn.com/soccer/schedule") // Modify to the actual URL you are targeting
 
 	return details
+}
+
+func main() {
+	// Example usage of Scraper with Central Daylight Time (CDT)
+	matchDetails := Scraper("America/Chicago")
+
+	for _, match := range matchDetails {
+		log.Printf("Match: %+v\n", match)
+	}
 }

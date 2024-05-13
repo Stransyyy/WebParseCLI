@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"cli-cobra/util"
-	"fmt"
+	"log"
 
 	"github.com/spf13/cobra"
 )
@@ -23,7 +23,8 @@ func loadGames(cmd *cobra.Command, args []string) {
 	MatchData := util.Scraper("America/Chicago")
 
 	for _, match := range MatchData {
-		fmt.Println(match.Time, match.Team2)
+		// fmt.Println(match.Time, match.Team2)
+		log.Printf("Match: %+v\n", match)
 	}
 
 	//fmt.Println(MatchData)
