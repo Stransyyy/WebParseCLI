@@ -29,3 +29,7 @@ func ReadCSV() string {
 	return fmt.Sprint(records)
 
 }
+
+func WriteCSV() {
+
+}

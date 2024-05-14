@@ -91,47 +91,42 @@ func Scraper(timeZone string) []MatchDetails {
 
 	c.OnHTML("tbody.Table__TBODY", func(e *colly.HTMLElement) {
 		e.ForEach("tr.Table__TR--sm", func(_ int, el *colly.HTMLElement) {
-			team1 := el.ChildText("span.Table__Team.away a.AnchorLink")
-			team2 := el.ChildText("span.Table__Team a.AnchorLink")                          //
-			gameStatus := el.ChildText("span.gameNote")                                     // Game status, like ie: FT, HT, 1st Leg, etc
+			team1 := el.ChildText("span.Table__Team.away a.AnchorLink")                     // team 1
+			team2 := el.ChildText("span.Table__Team a.AnchorLink")                          // team 2
+			gameStatus := el.ChildText("span.gameNote")                                     // Game note like ie: 1st Leg
 			timeStatus := el.ChildText("td.date__col a.AnchorLink")                         // Time of start of the game
-			timeStatus2 := el.ChildText("td.date__col a.Schedule__liveLink clr-brand-ESPN") // check for LIVE game Time
-			venue := el.ChildText("td.venue__col div")
-			gameStatusV2 := el.ChildText("td.teams__col a.AnchorLink")
-			score := el.ChildText("td.colspan__col.Table__TD a.AnchorLink.at")
+			timeStatus2 := el.ChildText("td.date__col a.Schedule__liveLink clr-brand-ESPN") // Time: LIVE
+			venue := el.ChildText("td.venue__col div")                                      // Stadium/city
+			gameStatusV2 := el.ChildText("td.teams__col a.AnchorLink")                      // Game status, like ie: FT
+			score := el.ChildText("td.colspan__col.Table__TD a.AnchorLink.at")              //Score of the match
 
 			reg := regexp.MustCompile(pattern)
-
-			if timeStatus == timeStatus2 {
-				timeStatus = timeStatus2
-			}
-
-			if gameStatus == "" {
-				gameStatus = gameStatusV2
-			}
-
-			// Append the data to the slice
 			if reg.MatchString(score) {
-
-				details = append(details, MatchDetails{
-					Team1:      team1,
-					Team2:      team2,
-					GameStatus: gameStatus,
-					Venue:      venue,
-					Time:       timeStatus,
-					Score:      score,
-				})
-
+				score = "FT " + score
 			} else {
-				details = append(details, MatchDetails{
-					Team1:      team1,
-					Team2:      team2,
-					GameStatus: gameStatus,
-					Venue:      venue,
-					Time:       timeStatus,
-					Score:      "Not Available",
-				})
+				score = "Not played yet"
 			}
+
+			if gameStatus == "" { // if the game status is empty we want to display either the LIVE or FT status
+				switch {
+				case strings.Contains(timeStatus2, "LIVE"):
+					gameStatus = "LIVE"
+				case strings.Contains(gameStatusV2, "FT"):
+					gameStatus = "FT"
+				default:
+					gameStatus = "Not played yet"
+				}
+			}
+
+			details = append(details, MatchDetails{
+				Team1:      team1,
+				Team2:      team2,
+				GameStatus: gameStatus,
+				Venue:      venue,
+				Time:       timeStatus,
+				Score:      score,
+			})
+
 		})
 	})
 
