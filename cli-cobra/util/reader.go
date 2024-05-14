@@ -6,9 +6,6 @@ import (
 	"os"
 )
 
-type Details struct {
-}
-
 func ReadCSV() string {
 	// Open the file
 	// Read the file

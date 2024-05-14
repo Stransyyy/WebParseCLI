@@ -3,6 +3,7 @@ package util
 import (
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 	"time"
 
@@ -10,7 +11,8 @@ import (
 )
 
 var (
-	layout = "3:04 PM" // Parsing 12-hour clock format with AM/PM
+	layout  = "3:04 PM" // Parsing 12-hour clock format with AM/PM
+	pattern = `^\d+\s*-\s*\d+$`
 )
 
 // MatchDetails holds the details of a match
@@ -20,6 +22,7 @@ type MatchDetails struct {
 	GameStatus string
 	Venue      string
 	Time       string
+	Score      string
 }
 
 // TimeResult holds the parsed time and any error message
@@ -32,6 +35,13 @@ type TimeResult struct {
 func ParseAndValidateTime(value string, timeZone string) TimeResult {
 	// Clean the input time string
 	value = strings.TrimSpace(value)
+
+	if value == "" {
+		return TimeResult{
+			ParsedTime: "",
+			ErrorMsg:   "Match time is empty or the match has already been played",
+		}
+	}
 
 	// Debug print the raw time string
 	fmt.Println("Raw time string:", value)
@@ -71,46 +81,57 @@ func Scraper(timeZone string) []MatchDetails {
 	)
 
 	var details []MatchDetails
-
 	details = append(details, MatchDetails{
 		Team1:      "Team 1",
 		Team2:      "Team 2",
 		GameStatus: "Game Status",
 		Venue:      "Venue",
 		Time:       "Time",
-	})
+	}) // make this the header of the csv file
 
 	c.OnHTML("tbody.Table__TBODY", func(e *colly.HTMLElement) {
 		e.ForEach("tr.Table__TR--sm", func(_ int, el *colly.HTMLElement) {
 			team1 := el.ChildText("span.Table__Team.away a.AnchorLink")
-			team2 := el.ChildText("span.Table__Team a.AnchorLink:last-child")
-			gameStatus := el.ChildText("span.gameNote")
-			timeStart := el.ChildText("td.date__col a.AnchorLink")
+			team2 := el.ChildText("span.Table__Team a.AnchorLink")                          //
+			gameStatus := el.ChildText("span.gameNote")                                     // Game status, like ie: FT, HT, 1st Leg, etc
+			timeStatus := el.ChildText("td.date__col a.AnchorLink")                         // Time of start of the game
+			timeStatus2 := el.ChildText("td.date__col a.Schedule__liveLink clr-brand-ESPN") // check for LIVE game Time
 			venue := el.ChildText("td.venue__col div")
 			gameStatusV2 := el.ChildText("td.teams__col a.AnchorLink")
+			score := el.ChildText("td.colspan__col.Table__TD a.AnchorLink.at")
 
-			if strings.TrimSpace(gameStatusV2) == "FT" {
-				gameStatus = "Full Time"
+			reg := regexp.MustCompile(pattern)
+
+			if timeStatus == timeStatus2 {
+				timeStatus = timeStatus2
 			}
 
-			// Debug print the raw time string
-			fmt.Println("Raw extracted time string:", timeStart, "with the respective match: ", team2)
-
-			// We need to convert the time to a more readable format
-			timeResult := ParseAndValidateTime(timeStart, timeZone)
-			if timeResult.ErrorMsg != "" {
-				log.Println("Error parsing time:", timeResult.ErrorMsg)
-				timeResult.ParsedTime = "Time cannot be parsed"
+			if gameStatus == "" {
+				gameStatus = gameStatusV2
 			}
 
 			// Append the data to the slice
-			details = append(details, MatchDetails{
-				Team1:      team1,
-				Team2:      team2,
-				GameStatus: gameStatus,
-				Venue:      venue,
-				Time:       timeResult.ParsedTime,
-			})
+			if reg.MatchString(score) {
+
+				details = append(details, MatchDetails{
+					Team1:      team1,
+					Team2:      team2,
+					GameStatus: gameStatus,
+					Venue:      venue,
+					Time:       timeStatus,
+					Score:      score,
+				})
+
+			} else {
+				details = append(details, MatchDetails{
+					Team1:      team1,
+					Team2:      team2,
+					GameStatus: gameStatus,
+					Venue:      venue,
+					Time:       timeStatus,
+					Score:      "Not Available",
+				})
+			}
 		})
 	})
 
@@ -121,13 +142,4 @@ func Scraper(timeZone string) []MatchDetails {
 	c.Visit("https://www.espn.com/soccer/schedule") // Modify to the actual URL you are targeting
 
 	return details
-}
-
-func main() {
-	// Example usage of Scraper with Central Daylight Time (CDT)
-	matchDetails := Scraper("America/Chicago")
-
-	for _, match := range matchDetails {
-		log.Printf("Match: %+v\n", match)
-	}
 }
