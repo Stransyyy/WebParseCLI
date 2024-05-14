@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	layout = "3:04 PM" // The Go time layout for parsing 12-hour clock format with AM/PM
+	layout = "3:04 PM" // Parsing 12-hour clock format with AM/PM
 )
 
 // MatchDetails holds the details of a match
@@ -94,7 +94,7 @@ func Scraper(timeZone string) []MatchDetails {
 			}
 
 			// Debug print the raw time string
-			fmt.Println("Raw extracted time string:", timeStart)
+			fmt.Println("Raw extracted time string:", timeStart, "with the respective match: ", team2)
 
 			// We need to convert the time to a more readable format
 			timeResult := ParseAndValidateTime(timeStart, timeZone)
